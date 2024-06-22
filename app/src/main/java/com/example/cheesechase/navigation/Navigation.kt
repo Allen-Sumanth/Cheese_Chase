@@ -1,30 +1,71 @@
 package com.example.cheesechase.navigation
 
-import android.media.MediaPlayer
-import android.net.Uri
+import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.cheesechase.AudioClass
+import com.example.cheesechase.AudioType
 import com.example.cheesechase.GameViewModel
+import com.example.cheesechase.R
+import com.example.cheesechase.gyroscope.Sample
 import com.example.cheesechase.screens.GamePage
 import com.example.cheesechase.screens.HomePage
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.lifecycle.HiltViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun Navigation() {
+fun Navigation(context: Context) {
+    val viewModel = hiltViewModel<GameViewModel>()
     val navController = rememberNavController()
-    val viewModel: GameViewModel = viewModel<GameViewModel>()
+
+    //audio initialisation
+    val buttonAudio = AudioClass(context = context, audioIndex = R.raw.click_audio)
+    val enterAudio = AudioClass(context = context, audioIndex = R.raw.enter_gamepage)
+    val homePageAudioMap = mapOf(
+        AudioType.BUTTON to buttonAudio,
+        AudioType.ENTER to enterAudio,
+    )
+
+    val cheeseCollectAudio = AudioClass(context = context, audioIndex = R.raw.cheese_collect_final)
+    val cheeseShootAudio = AudioClass(context = context, audioIndex = R.raw.cheese_shoot)
+    val cheeseReviveAudio = AudioClass(context = context, audioIndex = R.raw.cheese_revive)
+    val invulnerabilityAudio = AudioClass(context = context, audioIndex = R.raw.invulnerability)
+    val speedUpAudio = AudioClass(context = context, audioIndex = R.raw.speedup)
+    val gameOverAudio = AudioClass(context = context, audioIndex = R.raw.game_over)
+    val clickAudio = AudioClass(context = context, audioIndex = R.raw.click_audio)
+    val firstHitAudio = AudioClass(context = context, audioIndex = R.raw.first_hit)
+    val gamePageAudioMap = mapOf(
+        AudioType.CHEESE_COLLECT to cheeseCollectAudio,
+        AudioType.CHEESE_SHOOT to cheeseShootAudio,
+        AudioType.CHEESE_REVIVE to cheeseReviveAudio,
+        AudioType.INVULNERABILITY to invulnerabilityAudio,
+        AudioType.SPEEDUP to speedUpAudio,
+        AudioType.GAME_OVER to gameOverAudio,
+        AudioType.BUTTON to clickAudio,
+        AudioType.FIRST_HIT to firstHitAudio
+    )
+
 
     NavHost(navController = navController, startDestination = Screens.HomePage.route) {
 
         composable(route = Screens.HomePage.route) {
-            HomePage(navController = navController, viewModel = viewModel)
+            HomePage(navController = navController, viewModel = viewModel, audioMap = homePageAudioMap)
         }
 
         composable(route = Screens.GamePage.route) {
-            GamePage(navController =  navController, viewModel = viewModel)
+            GamePage(
+                navController = navController,
+                viewModel = viewModel,
+                audioMap = gamePageAudioMap,
+                context = context
+            )
         }
     }
-
 }

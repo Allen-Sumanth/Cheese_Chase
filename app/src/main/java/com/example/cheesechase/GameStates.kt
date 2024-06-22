@@ -5,6 +5,7 @@ data class GameState(
     val firstHit: Boolean = false,
     val firstHitScore: Int = 0,
     val gameStatus: GameStatus = GameStatus.STOPPED,
+    var soundOn: Boolean = true
 )
 
 data class HackerState(

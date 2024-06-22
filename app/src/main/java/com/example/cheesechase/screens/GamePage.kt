@@ -1,5 +1,9 @@
 package com.example.cheesechase.screens
 
+import android.content.Context
+import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateIntAsState
@@ -54,6 +58,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -73,6 +78,8 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.cheesechase.AudioClass
+import com.example.cheesechase.AudioType
 import com.example.cheesechase.Constants
 import com.example.cheesechase.GameStatus
 import com.example.cheesechase.GameViewModel
@@ -88,9 +95,20 @@ import com.example.cheesechase.ui.theme.TitleColour
 import com.example.cheesechase.ui.theme.TrackColor
 import com.example.cheesechase.ui.theme.anonymousProBold
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun GamePage(viewModel: GameViewModel, navController: NavController) {
+fun GamePage(
+    viewModel: GameViewModel,
+    navController: NavController,
+    audioMap: Map<AudioType, AudioClass>,
+    context: Context,
+) {
+    BackHandler {//handles back button press
+        viewModel.pauseGame()
+        navController.navigate("homepage")
+    }
 
+    //region bitmaps
     val catDrawableBitmap = ImageBitmap.imageResource(id = R.drawable.cat_icon)
     val mouseDrawableBitmap = ImageBitmap.imageResource(id = R.drawable.mouse_icon)
     val mouseHitDrawableBitmap = ImageBitmap.imageResource(id = R.drawable.mouse_icon_firsthit)
@@ -100,7 +118,9 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
         ImageBitmap.imageResource(id = R.drawable.invulnerability_cookie)
     val speedUpBitmap = ImageBitmap.imageResource(id = R.drawable.speedup_icon)
     val cheeseBitmap = ImageBitmap.imageResource(id = R.drawable.cheese_icon)
+    //endregion
 
+    //region positioning cat and mouse
     var centreCoords by remember {
         mutableStateOf(listOf(0f, 500f, 0f))
     }//to position mouse and cat
@@ -121,7 +141,6 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
         label = "cat x coordinates",
         animationSpec = tween(durationMillis = 900, delayMillis = 100)
     )
-
     val catYOffset by animateIntAsState(
         targetValue = if (viewModel.state.firstHit) {
             Constants.CAT_VISIBLE
@@ -132,13 +151,14 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
         label = "cat y offset",
         animationSpec = tween(durationMillis = 800)
     )
+    //endregion
 
+    //calculating current velocity
     val currentVelocity by remember {
         derivedStateOf {
             (viewModel.gameTracker.times(0.005f) + Constants.INIT_VELOCITY + viewModel.speedupVelocity).dp
         }
     }
-
 
     //Content Box - contains everything in the screen
     Box(
@@ -242,6 +262,8 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                 mouseInvulnerableBitmap = mouseInvulnerableBitmap,
                 mouseXCoords = mouseXCoords,
                 viewModel = viewModel,
+                audioMap = audioMap,
+                context = context
             )
         }
 
@@ -282,9 +304,6 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                 }
                 Button(
                     onClick = {
-                        if (viewModel.hackerPlusState.cheeseCount > 0) {
-                            viewModel.shootCheese()
-                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ScoreCardBackground
@@ -330,6 +349,7 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                     Button(
                         onClick = {
                             viewModel.resetGame()
+                            audioMap[AudioType.BUTTON]?.play(1f)
                         },
                         shape = CircleShape,
                         modifier = Modifier.size(60.dp),
@@ -357,6 +377,7 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                             } else {
                                 viewModel.startGame()
                             }
+                            audioMap[AudioType.BUTTON]?.play(1f)
                         },
                         shape = CircleShape,
                         modifier = Modifier.size(60.dp),
@@ -392,7 +413,7 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                     }
 
                 }
-                Box(//audio button
+                Box(//cheese shooter
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.padding(horizontal = 32.dp)
                 ) {
@@ -400,6 +421,7 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                         onClick = {
                             if (viewModel.hackerPlusState.cheeseCount > 0) {
                                 viewModel.shootCheese()
+                                audioMap[AudioType.CHEESE_SHOOT]?.play(1f)
                             }
                         },
                         shape = CircleShape,
@@ -492,6 +514,7 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                                     onClick = {
                                         viewModel.openGameOverDialog = false
                                         viewModel.resetGame()
+                                        audioMap[AudioType.BUTTON]?.play(1f)
                                     },
                                     shape = CircleShape,
                                     modifier = Modifier.size(65.dp),
@@ -516,6 +539,7 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                                     onClick = {
                                         viewModel.openGameOverDialog = false
                                         viewModel.cheeseRevive()
+                                        audioMap[AudioType.CHEESE_REVIVE]?.play(0.7f)
                                     },
                                     shape = CircleShape,
                                     modifier = Modifier.size(85.dp),
@@ -540,7 +564,9 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                                         color = GameOverText,
                                         fontSize = 15.sp,
                                         fontFamily = anonymousProBold,
-                                        style = if (viewModel.hackerPlusState.cheeseCount == 0) TextStyle(textDecoration = TextDecoration.LineThrough)
+                                        style = if (viewModel.hackerPlusState.cheeseCount == 0) TextStyle(
+                                            textDecoration = TextDecoration.LineThrough
+                                        )
                                         else LocalTextStyle.current
                                     )
                                 }
@@ -554,6 +580,7 @@ fun GamePage(viewModel: GameViewModel, navController: NavController) {
                                         viewModel.resetGame()
                                         navController.navigate("homepage")
                                         viewModel.openGameOverDialog = false
+                                        audioMap[AudioType.BUTTON]?.play(1f)
                                     },
                                     shape = CircleShape,
                                     modifier = Modifier.size(65.dp),
@@ -611,12 +638,15 @@ private fun DrawScope.drawCat(
 
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 private fun DrawScope.drawMouse(
     mouseDrawableBitmap: ImageBitmap,
     mouseHitDrawableBitmap: ImageBitmap,
     mouseInvulnerableBitmap: ImageBitmap,
     mouseXCoords: Int,
     viewModel: GameViewModel,
+    audioMap: Map<AudioType, AudioClass>,
+    context: Context
 ) {
     val image = if (viewModel.hackerState.invulnerability == false) {
         if (viewModel.state.firstHit) {
@@ -641,10 +671,24 @@ private fun DrawScope.drawMouse(
 
     //check for collision and enabling powerups
     val mouseRect = Rect(mouseOffset.toOffset(), mouseSize.toSize())
-    viewModel.observeCollision(mouseRect = mouseRect)
-    viewModel.observeInvulnerabilityPowerup(mouseRect = mouseRect)
-    viewModel.observeSpeedUpPowerup(mouseRect = mouseRect)
-    viewModel.observeCheesePowerup(mouseRect = mouseRect)
+    viewModel.observeCollision(
+        mouseRect = mouseRect,
+        gameOverAudio = audioMap[AudioType.GAME_OVER],
+        firstHitAudio = audioMap[AudioType.FIRST_HIT],
+        context = context
+        )
+    viewModel.observeInvulnerabilityPowerup(
+        mouseRect = mouseRect,
+        cookieAudio = audioMap[AudioType.INVULNERABILITY]
+    )
+    viewModel.observeSpeedUpPowerup(
+        mouseRect = mouseRect,
+        speedUpAudio = audioMap[AudioType.SPEEDUP]
+    )
+    viewModel.observeCheesePowerup(
+        mouseRect = mouseRect,
+        collectAudio = audioMap[AudioType.CHEESE_COLLECT]
+    )
 }
 
 private fun DrawScope.drawMarkers(
@@ -786,10 +830,4 @@ private fun DrawScope.drawCheese(
             velocityPx = velocity.toPx()
         )
     }
-}
-
-@Preview
-@Composable
-private fun GamePagePreview() {
-    GamePage(viewModel = viewModel<GameViewModel>(), navController = rememberNavController())
 }
