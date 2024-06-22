@@ -1,8 +1,14 @@
 package com.example.cheesechase
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.Build
+import android.os.Parcel
+import android.os.Parcelable
+import android.provider.MediaStore.Audio
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -20,12 +26,20 @@ import com.example.cheesechase.component_classes.CheeseClass
 import com.example.cheesechase.component_classes.CookieClass
 import com.example.cheesechase.component_classes.ObstacleClass
 import com.example.cheesechase.component_classes.SpeedUpClass
+import com.example.cheesechase.gyroscope.Sample
 import com.example.cheesechase.ui.theme.GamePageBackground
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.Closeable
+import javax.inject.Inject
 
 @SuppressLint("MutableCollectionMutableState")
-class GameViewModel : ViewModel() {
+@HiltViewModel
+class GameViewModel @Inject constructor(
+    sample: Sample
+) : ViewModel() {
     //region declaring states
     var state by mutableStateOf(GameState())//game state
     var hackerState by mutableStateOf(HackerState())//hacker state
@@ -213,14 +227,18 @@ class GameViewModel : ViewModel() {
     //endregion
 
     //region observing collision - called in mouse drawing from game screen
-    fun observeCollision(mouseRect: Rect) {//also reset cat 10 blocks after collision
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun observeCollision(mouseRect: Rect, gameOverAudio: AudioClass?, firstHitAudio: AudioClass?, context: Context) {//also reset cat 10 blocks after collision
         if (obstaclePosRecorder.any { obstacleRect ->
                 obstacleRect.overlaps(mouseRect)
             }) {
             if (state.firstHit == false && hackerState.invulnerability == false) {//if invulnerable, collision doesn't matter
                 collisionFirstHit()
+                firstHitAudio?.play(1f )
+                FirstHitVibration().vibrate(context = context, duration = 250)
             } else if (state.firstHit == true && gameScore > state.firstHitScore && hackerState.invulnerability == false) {
                 collisionSecondHit()
+                gameOverAudio?.play(1f)
             }
         }
 
@@ -237,6 +255,7 @@ class GameViewModel : ViewModel() {
             firstHit = true,
             firstHitScore = gameScore
         )
+
     }
 
     private fun collisionSecondHit() {
@@ -276,7 +295,7 @@ class GameViewModel : ViewModel() {
         }
     }
 
-    fun observeInvulnerabilityPowerup(mouseRect: Rect) {
+    fun observeInvulnerabilityPowerup(mouseRect: Rect, cookieAudio: AudioClass?) {
         if (cookiePosRecorder.any { cookieRect ->
                 cookieRect.overlaps(mouseRect)
             }) {
@@ -284,6 +303,7 @@ class GameViewModel : ViewModel() {
                 invulnerability = true,
                 invulnerabilityActivationScore = gameScore
             )
+            cookieAudio?.play(volume = 1f)
         }
         if (hackerState.invulnerability == true && gameScore > hackerState.invulnerabilityActivationScore + 10) {
             hackerState = hackerState.copy(
@@ -333,7 +353,7 @@ class GameViewModel : ViewModel() {
         }
     }
 
-    fun observeSpeedUpPowerup(mouseRect: Rect) {
+    fun observeSpeedUpPowerup(mouseRect: Rect, speedUpAudio: AudioClass?) {
         if (speedUpPosRecorder.any { speedUpRect ->
                 speedUpRect.overlaps(mouseRect)
             }) {
@@ -341,6 +361,7 @@ class GameViewModel : ViewModel() {
                 speedUp = true,
                 speedUpActivationScore = gameScore
             )
+            speedUpAudio?.play(volume = 0.5f)
             speedupVelocity = Constants.SPEEDUP_VELOCITY.toFloat()
         }
         if (hackerState.speedUp == true && gameScore > hackerState.speedUpActivationScore + 10) {
@@ -392,7 +413,7 @@ class GameViewModel : ViewModel() {
         }
     }
 
-    fun observeCheesePowerup(mouseRect: Rect) {
+    fun observeCheesePowerup(mouseRect: Rect, collectAudio: AudioClass?) {
         if (cheesePosRecorder.any { cheeseRect ->
                 cheeseRect.overlaps(mouseRect)
             } && gameScore > hackerPlusState.latestCheeseScore) {//second condition to ensure the cheese doesn't get added twice
@@ -400,7 +421,9 @@ class GameViewModel : ViewModel() {
                 cheeseCount = hackerPlusState.cheeseCount + 1,
                 latestCheeseScore = gameScore
             )
+            collectAudio?.play(volume = 0.5f)
         }
+
     }
 
     private fun resetCheese() {
@@ -449,5 +472,7 @@ class GameViewModel : ViewModel() {
             firstHitScore = 0,
         )
     }
+
     //endregion
+
 }

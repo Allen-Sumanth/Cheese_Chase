@@ -1,7 +1,9 @@
 package com.example.cheesechase.screens
 
+import android.content.Context
 import android.media.MediaPlayer
 import android.net.Uri
+import android.provider.MediaStore.Audio
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDp
@@ -38,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.cheesechase.AudioClass
+import com.example.cheesechase.AudioType
 import com.example.cheesechase.GameViewModel
 import com.example.cheesechase.R
 import com.example.cheesechase.navigation.Screens
@@ -55,9 +60,14 @@ import com.example.cheesechase.ui.theme.HomePageBackground
 import com.example.cheesechase.ui.theme.HomePageButtonBackground
 import com.example.cheesechase.ui.theme.TitleColour
 import com.example.cheesechase.ui.theme.jollyLodger
+import kotlinx.coroutines.coroutineScope
 
 @Composable
-fun HomePage(navController: NavController, viewModel: GameViewModel) {
+fun HomePage(
+    navController: NavController,
+    viewModel: GameViewModel,
+    audioMap: Map<AudioType, AudioClass>,
+) {
 
     Column(
         modifier = Modifier
@@ -67,6 +77,7 @@ fun HomePage(navController: NavController, viewModel: GameViewModel) {
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        //title
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 //            modifier = Modifier.height(250.dp),
@@ -97,7 +108,7 @@ fun HomePage(navController: NavController, viewModel: GameViewModel) {
             label = "cheese height"
         )
 
-        Image(
+        Image( //cheese image
             painter = painterResource(R.drawable.cheese_icon),
             contentDescription = "Cheese Icon",
             modifier = Modifier
@@ -106,7 +117,7 @@ fun HomePage(navController: NavController, viewModel: GameViewModel) {
                 .offset(y = cheeseHeight.value.dp)
         )
 
-        Row(
+        Row(//buttons
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 20.dp),
@@ -114,8 +125,10 @@ fun HomePage(navController: NavController, viewModel: GameViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Button(
-                    onClick = { /*TODO*/ },
+                Button(//info button
+                    onClick = {
+                        audioMap[AudioType.BUTTON]?.play(volume = 0.5f)
+                    },
                     shape = CircleShape,
                     modifier = Modifier.size(60.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -126,10 +139,12 @@ fun HomePage(navController: NavController, viewModel: GameViewModel) {
                 ) {
                 }
                 Text(text = "?", fontSize = 35.sp, color = ButtonFont, fontWeight = FontWeight.W900)
-            } //info button
+            }
 
             Button( //play button
                 onClick = {
+                    audioMap[AudioType.ENTER]?.play(volume = 1f)
+
                     navController.navigate(Screens.GamePage.route)
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -148,48 +163,14 @@ fun HomePage(navController: NavController, viewModel: GameViewModel) {
             }
 
             Box { //holds options
-                var menuOpen by remember {
-                    mutableStateOf(false)
-                }
-                val menuOpenTransition = updateTransition(targetState = menuOpen, label = "menu")
-                val highScoresButtonOffset by menuOpenTransition.animateDp(label = "high score") { isMenuOpen ->
-                    when(isMenuOpen){
-                        true -> (-65).dp
-                        false -> 0.dp
-                    }
-                }
-                val audioButtonOffset by menuOpenTransition.animateDp(label = "audio") { isMenuOpen ->
-                    when(isMenuOpen){
-                        true -> (-130).dp
-                        false -> 0.dp
-                    }
-                }
-
-                //options button
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.zIndex(1f)) {
-                    Button(
-                        onClick = { menuOpen = !menuOpen },
-                        shape = CircleShape,
-                        modifier = Modifier.size(60.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = HomePageButtonBackground
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
-                        border = BorderStroke(width = 5.dp, color = TitleColour)
-                    ) {
-
-                    }
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = ButtonFont,
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
                 //Highscores button
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.offset(y = highScoresButtonOffset)) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
                     Button(
-                        onClick = { /*TODO*/ },
+                        onClick = {
+                            audioMap[AudioType.BUTTON]?.play(volume = 0.5f)
+                        },
                         shape = CircleShape,
                         modifier = Modifier.size(60.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -207,34 +188,8 @@ fun HomePage(navController: NavController, viewModel: GameViewModel) {
                         modifier = Modifier.size(30.dp)
                     )
                 }
-                //Audio toggle
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.offset(y = audioButtonOffset)) {
-                    Button(
-                        onClick = { /*TODO*/ },
-                        shape = CircleShape,
-                        modifier = Modifier.size(60.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = HomePageButtonBackground
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
-                        border = BorderStroke(width = 5.dp, color = TitleColour)
-                    ) {
 
-                    }
-                    Image(
-                        painter = painterResource(id = R.drawable.audio_symbol),
-                        contentDescription = "audio symbol",
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
             }
         }
     }
-}
-
-
-@Preview
-@Composable
-fun HomePagePreview(modifier: Modifier = Modifier) {
-    HomePage(navController = rememberNavController(), viewModel = GameViewModel())
 }
