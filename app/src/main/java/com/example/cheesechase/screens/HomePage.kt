@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -35,13 +37,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.ViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.cheesechase.component_classes.AudioClass
 import com.example.cheesechase.component_classes.AudioType
 import com.example.cheesechase.GameViewModel
@@ -49,7 +57,7 @@ import com.example.cheesechase.R
 import com.example.cheesechase.navigation.Screens
 import com.example.cheesechase.ui.theme.ButtonFont
 import com.example.cheesechase.ui.theme.GameOverText
-import com.example.cheesechase.ui.theme.HighScoreBackground
+import com.example.cheesechase.ui.theme.DialogBackground
 import com.example.cheesechase.ui.theme.HomePageBackground
 import com.example.cheesechase.ui.theme.HomePageButtonBackground
 import com.example.cheesechase.ui.theme.ScoreCardBackground
@@ -63,7 +71,6 @@ fun HomePage(
     viewModel: GameViewModel,
     audioMap: Map<AudioType, AudioClass>,
 ) {
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -121,9 +128,11 @@ fun HomePage(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            //info button
             Box(contentAlignment = Alignment.Center) {
-                Button(//info button
+                Button(
                     onClick = {
+                        viewModel.openInfoDialog = true
                         audioMap[AudioType.BUTTON]?.play(volume = 0.5f)
                     },
                     shape = CircleShape,
@@ -194,15 +203,23 @@ fun HomePage(
         if (viewModel.openHighScoreDialog) {
             HighScoreDialog(
                 viewModel = viewModel,
-                audioMap = audioMap,
-                highScore = 0
+                audioMap = audioMap
             )
+        }
+
+        //Game Intro Dialog
+        if (viewModel.openInfoDialog) {
+            GameIntro(onDismissRequest = {
+                viewModel.openInfoDialog = false
+                audioMap[AudioType.BUTTON]?.play(1f)
+            })
         }
     }
 }
 
 @Composable
-fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClass>, highScore: Int) {
+fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClass>) {
+    val currentHighScore = viewModel.retrieveHighScore()
     Dialog(onDismissRequest = {
         viewModel.openHighScoreDialog = false
         audioMap[AudioType.BUTTON]?.play(1f)
@@ -213,7 +230,7 @@ fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClas
                 .size(300.dp, 200.dp)
                 .padding(10.dp, 5.dp, 10.dp, 10.dp),
             colors = CardDefaults.cardColors(
-                containerColor = HighScoreBackground
+                containerColor = DialogBackground
             ),
             border = BorderStroke(width = 10.dp, color = Color.Black),
         ) {
@@ -241,17 +258,17 @@ fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClas
                 ) {
                     //Score Card
                     Card(
-                    shape = RoundedCornerShape(100),
-                    colors = CardDefaults.cardColors(
-                        containerColor = ScoreCardBackground
-                    ),
-                    border = BorderStroke(width = 6.dp, color = Color.Black),
-                    modifier = Modifier
-                        .fillMaxWidth(0.5f)
-                        .height(60.dp)
+                        shape = RoundedCornerShape(100),
+                        colors = CardDefaults.cardColors(
+                            containerColor = ScoreCardBackground
+                        ),
+                        border = BorderStroke(width = 6.dp, color = Color.Black),
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(60.dp)
                     ) {
                         Text(
-                            text = "${highScore}",
+                            text = "$currentHighScore",
                             fontFamily = anonymousProBold,
                             fontSize = if (viewModel.gameScore > 100) 35.sp else 40.sp,
                             modifier = Modifier
@@ -269,6 +286,7 @@ fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClas
                     ) {
                         Button(
                             onClick = {
+                                viewModel.resetHighScores()
                                 audioMap[AudioType.BUTTON]?.play(1f)
                             },
                             shape = CircleShape,
@@ -289,5 +307,67 @@ fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClas
                 }
             }
         }
+    }
+}
+
+
+@Composable
+fun GameIntro(onDismissRequest: () -> Unit) {
+    val textData = listOf(
+        "You're Jerry the mouse. The Objective of the game is to escape Tom, the cat which is hot on your trails.\n\n",
+        "How is game score calculated: game score increases by 1 everytime you cross a block\n\n",
+        "Tap on each track, or tilt the phone to move Jerry.\n\n",
+        "Once you hit an obstacle, Tom starts getting closer to you. If you hit an obstacle again while being chased, you will be caught and the game ends.\n\n",
+        "If you evade Tom for 10 blocks, Tom will go back to chasing from a distance.\n\n",
+        "Obtain powerup cookies, which make you invulnerable to block obstacles for the next 10 blocks.\n\n",
+        "Tread on the Speedup tiles carefully!! it speeds up your gameplay for the next 10 blocks.\n\n",
+        "Collect Cheese along your path - it can be used to shoot obstacles using the Cheese shooter button on the bottom right.\n\n",
+        "Cheese can also be used to revive Jerry if caught - revive option consumes 1 cheese, and hence you must have at least 1 cheese to use it.\n\n"
+    )
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            shape = RoundedCornerShape(40.dp),
+            modifier = Modifier
+                .padding(10.dp, 5.dp, 10.dp, 10.dp)
+                .height(500.dp),
+            border = BorderStroke(width = 10.dp, color = Color.Black),
+
+            ) {
+            Column(
+                modifier = Modifier
+                    .background(DialogBackground)
+                    .height(500.dp)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "ABOUT",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 5.dp),
+                    color = Color.LightGray,
+                    fontSize = 56.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = anonymousProBold
+                )
+                Text(buildAnnotatedString {
+                    textData.forEach {
+                        withStyle(style = SpanStyle(color = Color.LightGray)) {
+                            append("-")
+                            append("\t\t")
+                            append(it)
+                        }
+                    }
+                })
+            }
+        }
+    }
+}
+
+@Preview(showSystemUi = true, )
+@Composable
+private fun HomePagePreview() {
+    GameIntro {
+
     }
 }

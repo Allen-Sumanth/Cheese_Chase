@@ -153,7 +153,7 @@ fun GamePage(
         }
     }
 
-    //Content Box - contains everything in the screen
+    // region Content Box - contains everything in the screen
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -172,7 +172,7 @@ fun GamePage(
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectTapGestures { (offsetX, offsetY) ->
-                        viewModel.moveMouseLane(
+                        viewModel.moveMouseLaneFromPointer(
                             xInp = offsetX,
                             yInp = offsetY,
                             width = size.width.toFloat(),
@@ -597,6 +597,7 @@ fun GamePage(
             }
         }
     }
+    //endregion
 }
 
 

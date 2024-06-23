@@ -1,7 +1,9 @@
 package com.example.cheesechase.di
 
 import android.app.Application
-import com.example.cheesechase.gyroscope.Sample
+import com.example.cheesechase.data.DataStorage
+import com.example.cheesechase.gyroscope.GyroSensor
+import com.example.cheesechase.gyroscope.MeasurableSensor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +16,13 @@ import javax.inject.Singleton
 object AppModule {
     @Provides
     @Singleton
-    fun giveSample(context: Application): Sample {
-        return Sample(context)
+    fun provideGyroSensor(app: Application): MeasurableSensor {
+        return GyroSensor(app)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDataStore(app: Application): DataStorage {
+        return DataStorage(app)
     }
 }

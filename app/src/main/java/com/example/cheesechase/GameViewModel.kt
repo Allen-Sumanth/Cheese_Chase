@@ -2,9 +2,6 @@ package com.example.cheesechase
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
@@ -29,16 +26,25 @@ import com.example.cheesechase.component_classes.CookieClass
 import com.example.cheesechase.component_classes.FirstHitVibration
 import com.example.cheesechase.component_classes.ObstacleClass
 import com.example.cheesechase.component_classes.SpeedUpClass
-import com.example.cheesechase.gyroscope.Sample
+import com.example.cheesechase.data.DataStorage
+import com.example.cheesechase.gyroscope.MeasurableSensor
 import com.example.cheesechase.ui.theme.GamePageBackground
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @SuppressLint("MutableCollectionMutableState")
 @HiltViewModel
-class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
+class GameViewModel @Inject constructor(
+    private val gyroSensor: MeasurableSensor,
+    private val dataStore: DataStorage,
+) : ViewModel() {
+
+
 
     //region declaring states
     var state by mutableStateOf(GameState())//game state
@@ -51,6 +57,7 @@ class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
     var gameScore by mutableIntStateOf(0)
     var openGameOverDialog by mutableStateOf(false)//prompt to open game over dialog
     var openHighScoreDialog by mutableStateOf(false)//prompt to open high score dialog
+    var openInfoDialog by mutableStateOf(false)//prompt to open info dialog
 
     var speedupVelocity by mutableFloatStateOf(0f)//adds velocity when speedup is activated
     var cookiePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cookie for collision detection
@@ -58,13 +65,28 @@ class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
     var cheesePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cheese for collision detection
     //endregion
 
-    //region dataStore
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-    private val HIGH_SCORE = intPreferencesKey("high_score")
+    //region HighScore
+    private fun checkAndSaveHighScore() {
+        runBlocking {
+            if (gameScore > dataStore.highScoreFlow.first()) {
+                dataStore.saveNewScore(gameScore)
+            }
+        }
+    }
 
-//    val highScoreFlow = context.dataStore.data.map { preferences ->
-//        preferences[HIGH_SCORE] ?: 0
-//    }
+    fun retrieveHighScore(): Int {
+        var highScore: Int
+        runBlocking {
+            highScore = dataStore.highScoreFlow.first()
+        }
+        return highScore
+    }
+
+    fun resetHighScores() {
+        runBlocking {
+            dataStore.saveNewScore(0)
+        }
+    }
     //endregion
 
     //region starting, pausing and ending the game - overall control functions
@@ -106,6 +128,8 @@ class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
         speedupVelocity = 0f
         gameTracker = 0f
         currentMarkerOffset = 0f
+
+        checkAndSaveHighScore()
         gameScore = 0
     }
     //endregion
@@ -207,7 +231,7 @@ class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
     //endregion
 
     //region handling mouse movement
-    fun moveMouseLane(xInp: Float, yInp: Float, width: Float, height: Float) {
+    fun moveMouseLaneFromPointer(xInp: Float, yInp: Float, width: Float, height: Float) {
         val lane1Range = 0f..width.times(0.3125f)
         val lane2Range = width.times(0.3125f)..width.times(0.6875f)
         val lane3Range = width.times(0.6875f)..width
@@ -232,6 +256,28 @@ class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
                     )
                 }
             }
+        }
+    }
+
+    private fun mouseMouseLaneFromGyro(yAngularVelocity: Float) {
+        if (yAngularVelocity > 1.5) {
+            state = state.copy(
+                currentTrack = when (state.currentTrack) {
+                    0 -> 1
+                    1 -> 2
+                    2 -> 2
+                    else -> 1
+                }
+            )
+        } else if (yAngularVelocity < -1.5) {
+            state = state.copy(
+                currentTrack = when (state.currentTrack) {
+                    0 -> 0
+                    1 -> 0
+                    2 -> 1
+                    else -> 1
+                }
+            )
         }
     }
     //endregion
@@ -492,12 +538,15 @@ class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
     //endregion
 
     //region handling gyro
-    val sensorFeature = PackageManager.FEATURE_SENSOR_LIGHT
-    val sensorType = Sensor.TYPE_LIGHT
-    val doesSensorExist = true
-    private lateinit var sensorManager: SensorManager
-    private var sensor: Sensor? = null
-
+    init {
+        gyroSensor.startListening()
+        gyroSensor.setOnSensorValuesChangedListener { values ->
+            val yAngularVelocity = values[1]
+            if (state.gameStatus == GameStatus.PLAYING) {
+                mouseMouseLaneFromGyro(yAngularVelocity)
+            }
+        }
+    }
     //endregion
 
 }
