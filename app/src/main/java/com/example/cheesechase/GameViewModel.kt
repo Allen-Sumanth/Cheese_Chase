@@ -2,12 +2,10 @@ package com.example.cheesechase
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.media.MediaPlayer
-import android.net.Uri
+import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.os.Build
-import android.os.Parcel
-import android.os.Parcelable
-import android.provider.MediaStore.Audio
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -19,27 +17,29 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastFilter
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cheesechase.component_classes.AudioClass
 import com.example.cheesechase.component_classes.CheeseClass
 import com.example.cheesechase.component_classes.CookieClass
+import com.example.cheesechase.component_classes.FirstHitVibration
 import com.example.cheesechase.component_classes.ObstacleClass
 import com.example.cheesechase.component_classes.SpeedUpClass
 import com.example.cheesechase.gyroscope.Sample
 import com.example.cheesechase.ui.theme.GamePageBackground
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.Closeable
 import javax.inject.Inject
 
 @SuppressLint("MutableCollectionMutableState")
 @HiltViewModel
-class GameViewModel @Inject constructor(
-    sample: Sample
-) : ViewModel() {
+class GameViewModel @Inject constructor(sample: Sample) : ViewModel() {
+
     //region declaring states
     var state by mutableStateOf(GameState())//game state
     var hackerState by mutableStateOf(HackerState())//hacker state
@@ -50,11 +50,21 @@ class GameViewModel @Inject constructor(
     var obstaclePosRecorder by mutableStateOf(MutableList(4) { Rect.Zero })//recording position of each obstacle for collision detection
     var gameScore by mutableIntStateOf(0)
     var openGameOverDialog by mutableStateOf(false)//prompt to open game over dialog
+    var openHighScoreDialog by mutableStateOf(false)//prompt to open high score dialog
 
     var speedupVelocity by mutableFloatStateOf(0f)//adds velocity when speedup is activated
     var cookiePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cookie for collision detection
     var speedUpPosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each speed up for collision detection
     var cheesePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cheese for collision detection
+    //endregion
+
+    //region dataStore
+    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+    private val HIGH_SCORE = intPreferencesKey("high_score")
+
+//    val highScoreFlow = context.dataStore.data.map { preferences ->
+//        preferences[HIGH_SCORE] ?: 0
+//    }
     //endregion
 
     //region starting, pausing and ending the game - overall control functions
@@ -228,13 +238,18 @@ class GameViewModel @Inject constructor(
 
     //region observing collision - called in mouse drawing from game screen
     @RequiresApi(Build.VERSION_CODES.O)
-    fun observeCollision(mouseRect: Rect, gameOverAudio: AudioClass?, firstHitAudio: AudioClass?, context: Context) {//also reset cat 10 blocks after collision
+    fun observeCollision(
+        mouseRect: Rect,
+        gameOverAudio: AudioClass?,
+        firstHitAudio: AudioClass?,
+        context: Context,
+    ) {//also reset cat 10 blocks after collision
         if (obstaclePosRecorder.any { obstacleRect ->
                 obstacleRect.overlaps(mouseRect)
             }) {
             if (state.firstHit == false && hackerState.invulnerability == false) {//if invulnerable, collision doesn't matter
                 collisionFirstHit()
-                firstHitAudio?.play(1f )
+                firstHitAudio?.play(1f)
                 FirstHitVibration().vibrate(context = context, duration = 250)
             } else if (state.firstHit == true && gameScore > state.firstHitScore && hackerState.invulnerability == false) {
                 collisionSecondHit()
@@ -433,11 +448,12 @@ class GameViewModel @Inject constructor(
     }
 
     fun shootCheese() {
-        val targetObstacleList: List<ObstacleClass> = obstacleList.filter { obstacleClass -> //The obstacles that qualify
-            obstacleClass.laneIndex == state.currentTrack + 1 && //Must be in same lane
-                    obstaclePosRecorder[obstacleClass.obstacleIndex].top > 0 && //Must be visible
-                    obstaclePosRecorder[obstacleClass.obstacleIndex].bottom < 1800f // Must be above our mouse
-        }
+        val targetObstacleList: List<ObstacleClass> =
+            obstacleList.filter { obstacleClass -> //The obstacles that qualify
+                obstacleClass.laneIndex == state.currentTrack + 1 && //Must be in same lane
+                        obstaclePosRecorder[obstacleClass.obstacleIndex].top > 0 && //Must be visible
+                        obstaclePosRecorder[obstacleClass.obstacleIndex].bottom < 1800f // Must be above our mouse
+            }
 
         if (targetObstacleList.isNotEmpty()) {
             var targetObstacle = targetObstacleList.first()
@@ -472,6 +488,15 @@ class GameViewModel @Inject constructor(
             firstHitScore = 0,
         )
     }
+
+    //endregion
+
+    //region handling gyro
+    val sensorFeature = PackageManager.FEATURE_SENSOR_LIGHT
+    val sensorType = Sensor.TYPE_LIGHT
+    val doesSensorExist = true
+    private lateinit var sensorManager: SensorManager
+    private var sensor: Sensor? = null
 
     //endregion
 

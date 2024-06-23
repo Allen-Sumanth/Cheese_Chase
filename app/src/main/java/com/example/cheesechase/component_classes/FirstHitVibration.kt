@@ -1,4 +1,4 @@
-package com.example.cheesechase
+package com.example.cheesechase.component_classes
 
 import android.content.Context
 import android.os.Build
