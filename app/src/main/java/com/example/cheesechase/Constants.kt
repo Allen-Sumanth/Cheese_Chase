@@ -1,9 +1,5 @@
 package com.example.cheesechase
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.compose.rememberNavController
-
 object Constants {
     const val MOUSE_HEIGHT = 220
     const val CAT_HIDDEN = 25

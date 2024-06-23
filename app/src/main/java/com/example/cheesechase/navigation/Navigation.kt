@@ -1,9 +1,6 @@
 package com.example.cheesechase.navigation
 
 import android.content.Context
-import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
@@ -11,10 +8,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.cheesechase.component_classes.AudioClass
-import com.example.cheesechase.component_classes.AudioType
 import com.example.cheesechase.GameViewModel
 import com.example.cheesechase.R
+import com.example.cheesechase.component_classes.AudioClass
+import com.example.cheesechase.component_classes.AudioType
 import com.example.cheesechase.screens.GamePage
 import com.example.cheesechase.screens.HomePage
 
@@ -50,15 +47,6 @@ fun Navigation(context: Context) {
         AudioType.BUTTON to clickAudio,
         AudioType.FIRST_HIT to firstHitAudio
     )
-    //endregion
-
-    //region gyro initialisation
-    val sensorFeature = PackageManager.FEATURE_SENSOR_LIGHT
-    val sensorType = Sensor.TYPE_LIGHT
-    val doesSensorExist = context.packageManager.hasSystemFeature(sensorFeature)
-
-    lateinit var sensorManager: SensorManager
-    var sensor: Sensor? = null
     //endregion
 
     NavHost(navController = navController, startDestination = Screens.HomePage.route) {

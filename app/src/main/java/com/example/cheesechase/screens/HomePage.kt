@@ -363,11 +363,3 @@ fun GameIntro(onDismissRequest: () -> Unit) {
         }
     }
 }
-
-@Preview(showSystemUi = true, )
-@Composable
-private fun HomePagePreview() {
-    GameIntro {
-
-    }
-}

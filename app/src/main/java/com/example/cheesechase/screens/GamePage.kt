@@ -642,7 +642,7 @@ private fun DrawScope.drawMouse(
     audioMap: Map<AudioType, AudioClass>,
     context: Context
 ) {
-    val image = if (viewModel.hackerState.invulnerability == false) {
+    val image = if (!viewModel.hackerState.invulnerability) {
         if (viewModel.state.firstHit) {
             mouseHitDrawableBitmap
         } else {
@@ -663,7 +663,7 @@ private fun DrawScope.drawMouse(
         dstOffset = mouseOffset
     )
 
-    //check for collision and enabling powerups
+    //check for collision and enabling powerUps
     val mouseRect = Rect(mouseOffset.toOffset(), mouseSize.toSize())
     viewModel.observeCollision(
         mouseRect = mouseRect,

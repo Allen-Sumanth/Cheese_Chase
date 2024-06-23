@@ -14,10 +14,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cheesechase.component_classes.AudioClass
@@ -30,7 +26,6 @@ import com.example.cheesechase.data.DataStorage
 import com.example.cheesechase.gyroscope.MeasurableSensor
 import com.example.cheesechase.ui.theme.GamePageBackground
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -40,7 +35,7 @@ import javax.inject.Inject
 @SuppressLint("MutableCollectionMutableState")
 @HiltViewModel
 class GameViewModel @Inject constructor(
-    private val gyroSensor: MeasurableSensor,
+    gyroSensor: MeasurableSensor,
     private val dataStore: DataStorage,
 ) : ViewModel() {
 
@@ -53,16 +48,16 @@ class GameViewModel @Inject constructor(
 
     var gameTracker by mutableFloatStateOf(0f)//10ms delay keeping pace of game
     private var currentMarkerOffset by mutableFloatStateOf(0f) // for drawing markers
-    var obstaclePosRecorder by mutableStateOf(MutableList(4) { Rect.Zero })//recording position of each obstacle for collision detection
+    private var obstaclePosRecorder by mutableStateOf(MutableList(4) { Rect.Zero })//recording position of each obstacle for collision detection
     var gameScore by mutableIntStateOf(0)
     var openGameOverDialog by mutableStateOf(false)//prompt to open game over dialog
     var openHighScoreDialog by mutableStateOf(false)//prompt to open high score dialog
     var openInfoDialog by mutableStateOf(false)//prompt to open info dialog
 
     var speedupVelocity by mutableFloatStateOf(0f)//adds velocity when speedup is activated
-    var cookiePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cookie for collision detection
-    var speedUpPosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each speed up for collision detection
-    var cheesePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cheese for collision detection
+    private var cookiePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cookie for collision detection
+    private var speedUpPosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each speed up for collision detection
+    private var cheesePosRecorder by mutableStateOf(MutableList(8) { Rect.Zero })//recording position of each cheese for collision detection
     //endregion
 
     //region HighScore
@@ -293,17 +288,17 @@ class GameViewModel @Inject constructor(
         if (obstaclePosRecorder.any { obstacleRect ->
                 obstacleRect.overlaps(mouseRect)
             }) {
-            if (state.firstHit == false && hackerState.invulnerability == false) {//if invulnerable, collision doesn't matter
+            if (!state.firstHit && !hackerState.invulnerability) {//if invulnerable, collision doesn't matter
                 collisionFirstHit()
                 firstHitAudio?.play(1f)
                 FirstHitVibration().vibrate(context = context, duration = 250)
-            } else if (state.firstHit == true && gameScore > state.firstHitScore && hackerState.invulnerability == false) {
+            } else if (state.firstHit && gameScore > state.firstHitScore && !hackerState.invulnerability) {
                 collisionSecondHit()
                 gameOverAudio?.play(1f)
             }
         }
 
-        if ((state.firstHit == true && gameScore > state.firstHitScore + 10) || (state.firstHit == true && hackerState.invulnerability == true)) {
+        if ((state.firstHit && gameScore > state.firstHitScore + 10) || (state.firstHit && hackerState.invulnerability)) {
             state = state.copy(
                 firstHit = false,
                 firstHitScore = 0
@@ -366,7 +361,7 @@ class GameViewModel @Inject constructor(
             )
             cookieAudio?.play(volume = 1f)
         }
-        if (hackerState.invulnerability == true && gameScore > hackerState.invulnerabilityActivationScore + 10) {
+        if (hackerState.invulnerability && gameScore > hackerState.invulnerabilityActivationScore + 10) {
             hackerState = hackerState.copy(
                 invulnerability = false,
                 invulnerabilityActivationScore = 0
@@ -425,7 +420,7 @@ class GameViewModel @Inject constructor(
             speedUpAudio?.play(volume = 0.5f)
             speedupVelocity = Constants.SPEEDUP_VELOCITY.toFloat()
         }
-        if (hackerState.speedUp == true && gameScore > hackerState.speedUpActivationScore + 10) {
+        if (hackerState.speedUp && gameScore > hackerState.speedUpActivationScore + 10) {
             hackerState = hackerState.copy(
                 speedUp = false,
                 speedUpActivationScore = 0
@@ -508,8 +503,6 @@ class GameViewModel @Inject constructor(
                     targetObstacle = obstacleClass
                 }
             }
-
-            println("wohoo ${obstaclePosRecorder[targetObstacle.obstacleIndex]} ${targetObstacle.obstacleIndex}, ${targetObstacle.laneIndex}, $obstaclePosRecorder")
 
             obstacleList[targetObstacle.obstacleIndex].laneIndex =
                 4 //change the lane index to 4 to mark it as shot down
