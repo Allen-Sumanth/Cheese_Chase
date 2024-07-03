@@ -84,6 +84,12 @@ dependencies {
 
     // optional - RxJava3 support
     implementation(libs.androidx.datastore.preferences.rxjava3)
+
+    //retrofit
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.okhttp)
+
 }
 
 kapt {
