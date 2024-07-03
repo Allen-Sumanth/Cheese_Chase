@@ -1,5 +1,8 @@
 package com.example.cheesechase.screens
 
+import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -32,6 +35,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -61,13 +67,17 @@ import com.example.cheesechase.ui.theme.ScoreCardBackground
 import com.example.cheesechase.ui.theme.TitleColour
 import com.example.cheesechase.ui.theme.anonymousProBold
 import com.example.cheesechase.ui.theme.jollyLodger
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomePage(
     navController: NavController,
     viewModel: GameViewModel,
     audioMap: Map<AudioType, AudioClass>,
+    context: Context
 ) {
+    DoubleBackPressToExit(context)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -215,6 +225,21 @@ fun HomePage(
 }
 
 @Composable
+fun DoubleBackPressToExit(context: Context, enabled: Boolean = true) {
+    val scope = rememberCoroutineScope()
+    val isBackPressed = remember { mutableStateOf(false) }
+
+    BackHandler(enabled && !isBackPressed.value) {
+        isBackPressed.value = true
+        Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+        scope.launch {
+            delay(2000L)
+            isBackPressed.value = false
+        }
+    }
+}
+
+@Composable
 fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClass>) {
     val currentHighScore = viewModel.retrieveHighScore()
     Dialog(onDismissRequest = {
@@ -306,7 +331,6 @@ fun HighScoreDialog(viewModel: GameViewModel, audioMap: Map<AudioType, AudioClas
         }
     }
 }
-
 
 @Composable
 fun GameIntro(onDismissRequest: () -> Unit) {
