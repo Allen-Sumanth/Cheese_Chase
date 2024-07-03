@@ -52,7 +52,7 @@ fun Navigation(context: Context) {
     NavHost(navController = navController, startDestination = Screens.HomePage.route) {
 
         composable(route = Screens.HomePage.route) {
-            HomePage(navController = navController, viewModel = viewModel, audioMap = homePageAudioMap)
+            HomePage(navController = navController, viewModel = viewModel, audioMap = homePageAudioMap, context = context)
         }
 
         composable(route = Screens.GamePage.route) {

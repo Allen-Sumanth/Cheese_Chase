@@ -77,6 +77,7 @@ import com.example.cheesechase.Constants
 import com.example.cheesechase.GameStatus
 import com.example.cheesechase.GameViewModel
 import com.example.cheesechase.R
+import com.example.cheesechase.navigation.Screens
 import com.example.cheesechase.ui.theme.ButtonFont
 import com.example.cheesechase.ui.theme.DisabledReviveButton
 import com.example.cheesechase.ui.theme.GameOverBackground
@@ -98,7 +99,12 @@ fun GamePage(
 ) {
     BackHandler {//handles back button press
         viewModel.pauseGame()
-        navController.navigate("homepage")
+        navController.navigate(Screens.HomePage.route) {
+            popUpTo(Screens.HomePage.route){
+                inclusive = true
+                saveState = true
+            }
+        }
     }
 
     //region bitmaps
@@ -571,7 +577,12 @@ fun GamePage(
                                 Button(
                                     onClick = {
                                         viewModel.resetGame()
-                                        navController.navigate("homepage")
+                                        navController.navigate(Screens.HomePage.route) {
+                                            popUpTo(Screens.HomePage.route) {
+                                                inclusive = true
+                                                saveState = true
+                                            }
+                                        }
                                         viewModel.openGameOverDialog = false
                                         audioMap[AudioType.BUTTON]?.play(1f)
                                     },
