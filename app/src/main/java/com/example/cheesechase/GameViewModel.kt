@@ -39,8 +39,6 @@ class GameViewModel @Inject constructor(
     private val dataStore: DataStorage,
 ) : ViewModel() {
 
-
-
     //region declaring states
     var state by mutableStateOf(GameState())//game state
     var hackerState by mutableStateOf(HackerState())//hacker state
@@ -142,8 +140,8 @@ class GameViewModel @Inject constructor(
 
     private fun updateGameTracker() {
         viewModelScope.launch {
-            delay(10)
-            gameTracker += 0.1f
+            delay(50)
+            gameTracker += 0.5f
         }
     }
 
@@ -214,7 +212,6 @@ class GameViewModel @Inject constructor(
             it.reset()
         }
     }
-
 
     fun increaseGameScore(velocityPx: Float) {
         if (obstaclePosRecorder.any { obstacleRect ->
@@ -541,5 +538,4 @@ class GameViewModel @Inject constructor(
         }
     }
     //endregion
-
 }
